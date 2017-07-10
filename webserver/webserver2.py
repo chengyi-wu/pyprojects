@@ -21,7 +21,7 @@ class WSGIServer(object):
         # Activate
         listen_socket.listen(self.request_queue_size)
         # Get server host name and port
-        host, port = self.listen_socket.getsocketname()[:2]
+        host, port = self.listen_socket.getsockname()[:2]
         self.server_name = socket.getfqdn(host)
         self.server_port = port
         # Return headers set by Web framework/Web application
@@ -50,7 +50,7 @@ class WSGIServer(object):
         self.parse_request(request_data)
 
         # Construct enviroment dictionary using request data
-        env = self.get_version()
+        env = self.get_environ()
 
         # It's time to call our application callable and get
         # back a result that will become HTTP response body
@@ -102,14 +102,14 @@ class WSGIServer(object):
     def finish_response(self, result):
         try:
             status, response_headers = self.headers_set
-            response = 'HTTP1.1 {status}\r\n'.format(status=status)
+            response = 'HTTP/1.1 {status}\r\n'.format(status=status)
             for header in response_headers:
                 response += '{0}: {1}\r\n'.format(*header)
             response += '\r\n'
             for data in result:
                 response += data
             
-            print (''.join(
+            print(''.join(
                 '> {line}\n'.format(line=line)
                 for line in response.splitlines()
             ))
@@ -128,8 +128,8 @@ if __name__ == '__main__':
     if len(sys.argv) < 2:
         sys.exit('Provide a WSGI application object as modle:callable')
     app_path = sys.argv[1]
-    module, applicaiton = app_path.split(':')
-    module = __import__(moduel)
+    module, application = app_path.split(':')
+    module = __import__(module)
     application = getattr(module, application)
     httpd = make_server(SERVER_ADDRESS, application)
     print('WSGIServer: Serving HTTP on port {port} ...\n'.format(port=PORT))
