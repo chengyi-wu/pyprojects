@@ -99,6 +99,10 @@ class WSGIServer(object):
 
         self.headers_set = [status, response_headers + server_headers]
 
+        # To adhere to WSGI specification the start_response must resturn
+        # a 'write' callable.
+        # return self.finish_response
+
     def finish_response(self, result):
         try:
             status, response_headers = self.headers_set
@@ -134,3 +138,4 @@ if __name__ == '__main__':
     httpd = make_server(SERVER_ADDRESS, application)
     print('WSGIServer: Serving HTTP on port {port} ...\n'.format(port=PORT))
     httpd.serve_forever()
+    
