@@ -1,6 +1,7 @@
 import socket
 import StringIO
 import sys
+import traceback
 
 class WSGIServer(object):
 
@@ -9,7 +10,7 @@ class WSGIServer(object):
     request_queue_size = 1
     
     def __init__(self, server_address):
-	print('DEBUG\tWSGIServer::__init__')
+        print('DEBUG\tWSGIServer::__init__')
         # Create a listening socket
         self.listen_socket = listen_socket = socket.socket(
             self.address_family,
@@ -29,11 +30,11 @@ class WSGIServer(object):
         self.headers_set = []
 
     def set_app(self, application):
-	print('DEBUG\tWSGIServer::set_app')
+        print('DEBUG\tWSGIServer::set_app')
         self.application = application
 
     def serve_forever(self):
-	print('DEBUG\tWSGIServer::serve_forever')
+        print('DEBUG\tWSGIServer::serve_forever')
         listen_socket = self.listen_socket
         while True:
             # New client connection
@@ -43,7 +44,7 @@ class WSGIServer(object):
             self.handle_one_request()
 
     def handle_one_request(self):
-	print('DEBUG\tWSGIServer::handle_one_request')
+        print('DEBUG\tWSGIServer::handle_one_request')
         self.request_data = request_data = self.client_connection.recv(1024)
         # Print formated request data a la 'curl -v'
         print(''.join(
@@ -58,11 +59,11 @@ class WSGIServer(object):
 
         # It's time to call our application callable and get
         # back a result that will become HTTP response body
-	print('DEBUG\tWSGIServer::handle_one_request:start_response')
+        print('DEBUG\tWSGIServer::handle_one_request:start_response')
         result = self.application(env, self.start_response)
         
         # Contruct a response and send it back to the client
-	print('DEBUG\tWSGIServer::handle_one_request:finish_response')
+        print('DEBUG\tWSGIServer::handle_one_request:finish_response')
         self.finish_response(result)
 
     def parse_request(self, text):
@@ -97,6 +98,7 @@ class WSGIServer(object):
         return env
     
     def start_response(self, status, response_headers, exec_info=None):
+        traceback.print_stack()
         # Add necessary server headers
         server_headers = [
             ('Date', 'Mon, 10 Jul 2017, 21:15:00 GMT+8'),
