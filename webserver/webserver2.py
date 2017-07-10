@@ -9,6 +9,7 @@ class WSGIServer(object):
     request_queue_size = 1
     
     def __init__(self, server_address):
+	print('DEBUG\tWSGIServer::__init__')
         # Create a listening socket
         self.listen_socket = listen_socket = socket.socket(
             self.address_family,
@@ -28,9 +29,11 @@ class WSGIServer(object):
         self.headers_set = []
 
     def set_app(self, application):
+	print('DEBUG\tWSGIServer::set_app')
         self.application = application
 
     def serve_forever(self):
+	print('DEBUG\tWSGIServer::serve_forever')
         listen_socket = self.listen_socket
         while True:
             # New client connection
@@ -40,9 +43,10 @@ class WSGIServer(object):
             self.handle_one_request()
 
     def handle_one_request(self):
+	print('DEBUG\tWSGIServer::handle_one_request')
         self.request_data = request_data = self.client_connection.recv(1024)
         # Print formated request data a la 'curl -v'
-        print (''.join(
+        print(''.join(
             '< {line}\n'.format(line=line)
             for line in request_data.splitlines()
         ))
@@ -54,9 +58,11 @@ class WSGIServer(object):
 
         # It's time to call our application callable and get
         # back a result that will become HTTP response body
+	print('DEBUG\tWSGIServer::handle_one_request:start_response')
         result = self.application(env, self.start_response)
         
         # Contruct a response and send it back to the client
+	print('DEBUG\tWSGIServer::handle_one_request:finish_response')
         self.finish_response(result)
 
     def parse_request(self, text):
@@ -124,6 +130,8 @@ class WSGIServer(object):
 SERVER_ADDRESS = (HOST, PORT) = '', 8888
 
 def make_server(server_address, applicaiton):
+    print('global::make_server')
+    print(server_address, application)
     server = WSGIServer(server_address)
     server.set_app(applicaiton)
     return server

@@ -10,4 +10,5 @@ def hello_word(request):
 config = Configurator()
 config.add_route('hello', '/hello')
 config.add_view(hello_word, route_name='hello')
+print('DEBUG\tpyramid.config.Configurator')
 app = config.make_wsgi_app()
