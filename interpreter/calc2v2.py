@@ -112,7 +112,8 @@ class Interpreter(object):
         self.current_token = self.get_next_token()
 
         # we expect the current token to be a single-digit integer
-        left = self.current_token
+        #left = self.current_token
+        result = self.current_token.value
         self.eat(INTEGER)
 
         while self.current_token.type != EOF:
@@ -136,11 +137,11 @@ class Interpreter(object):
             # return the result of adding tow integers, thus
             # effectively interpreting client input
             if op.type == PLUS:
-                left.value += right.value
+                result += right.value
             else:
-                left.value -= right.value
+                result -= right.value
             #left.value = result
-        return left.value
+        return result
 
 def main():
     while True:
