@@ -23,16 +23,18 @@ class Token(object):
     def __repr__(self):
         return self.__str__()
 
-class Interpreter(object):
+class Lexer(object):
+    '''
+    Lexical analysis: the process of breaking the input string into tokens.
+    '''
     def __init__(self, text):
-        # client string input, e.g. "3+5", "12-5", etc
+        # client string input, e.g. "3 * 5", "12 / 3 * 4", etc
         self.text = text
         # self.pos is an index into self.ttext
         self.pos = 0
         # current token instance
         self.current_token = None
         self.current_char = self.text[self.pos]
-        #self.advance() # this line cannot be correctly executed
 
     def error(self):
         raise Exception("Error parsing input")
@@ -89,24 +91,25 @@ class Interpreter(object):
 
         return Token(EOF, None)
 
+class Interpreter(object):
+    def __init__(self, lexer):
+        self.lexer = lexer
+        # set current token to the first token taken from the input
+        self.current_token = self.lexer.get_next_token()
+
+    def error(self):
+        raise Exception("Invalid syntax")
+
     def eat(self, token_type):
         # compare the current token type with the passed token
         # type and if they match then "eat" the current token
         # and assign the next token to the self.current_token,
         # otherwise raise an exception.
-        #print(self.current_token, token_type)
+        
         if self.current_token.type == token_type:
-            self.current_token = self.get_next_token()
-        else:
+            self.current_token = self.lexer.get_next_token()
+        else: # Invalid syntax
             self.error()
-
-    # def term(self):
-    #     '''
-    #     Return an INTEGER token value
-    #     '''
-    #     token = self.current_token
-    #     self.eat(INTEGER)
-    #     return token.value
 
     def factor(self):
         '''
@@ -124,9 +127,6 @@ class Interpreter(object):
         expr : factor ((MUL|DIV)factor)*
         factor : INTEGER
         '''
-        # set the current token into the first token from the input
-        self.current_token = self.get_next_token()
-
         result = self.factor()
 
         while self.current_token.type in (MUL, DIV):
@@ -138,8 +138,6 @@ class Interpreter(object):
             elif token.type == DIV:
                 self.eat(DIV)
                 result /= self.factor()
-            # else: # op.type == None
-            #     continue
 
         return result
 
@@ -151,7 +149,8 @@ def main():
             break
         if not text:
             continue
-        interpreter = Interpreter(text)
+        lexer = Lexer(text)
+        interpreter = Interpreter(lexer)
         result = interpreter.expr()
         print(result)
 
