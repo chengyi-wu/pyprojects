@@ -6,6 +6,7 @@ s = '\
 BEGIN\
     begin\
         number := 2;\
+        _num := 5;\
         a := number;\
         b := 10 * a + 10 * number DIV 4;\
         c := a - - b\

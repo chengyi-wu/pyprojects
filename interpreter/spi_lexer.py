@@ -56,7 +56,8 @@ class Lexer(object):
     def getWord(self):
         word = ''
         text = self.text
-        while self.current_char is not None and self.current_char.isalnum():
+        while self.current_char is not None\
+             and (self.current_char.isalnum() or self.current_char == '_'):
             word += self.current_char
             self.advance()
         # Set the word to upper case, making keyword case insensitve
@@ -77,7 +78,7 @@ class Lexer(object):
                 return token
             elif self.current_char.isdigit():
                 return self.getNumber()
-            elif self.current_char.isalpha():
+            elif self.current_char.isalpha() or self.current_char == '_':
                 return self.getWord()
             elif self.current_char == ':' and self.peek() == '=':
                 self.advance()
