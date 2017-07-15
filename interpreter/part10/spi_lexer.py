@@ -10,7 +10,7 @@ class Token(object):
 RESERVED_KEYWORDS = {
     'BEGIN' : Token('BEGIN', 'BEGIN'),
     'END' : Token('END', 'END'),
-    'DIV' : Token('INTEGERDIV', 'DIV'),
+    'DIV' : Token('INTEGER_DIV', 'DIV'),
     'PROGRAM' : Token('PROGRAM', 'PROGRAM'),
     'VAR' : Token('VAR', 'VAR'),
     'INTEGER' : Token('INTEGER', 'INTEGER'),
@@ -21,6 +21,7 @@ class Lexer(object):
     def __init__(self, text):
         self.pos = 0
         self.text = text
+        self.current_token = None
         self.current_char = self.text[self.pos]
         self.token_types = {
             '.' : 'DOT',
@@ -28,16 +29,16 @@ class Lexer(object):
             '+' : 'PLUS',
             '-' : 'MINUS',
             '*' : 'MUL',
-            '/' : 'FLOATDIV',
+            '/' : 'FLOAT_DIV',
             '(' : 'LPAREN',
             ')' : 'RPAREN',
-            ':' : 'COLON',
             ',' : 'COMMA',
-            '{' : 'LBRACE',
-            '}' : 'RBRACE',
-            "'" : 'SINGLEQUOTE',
-            '"' : 'DOUBLEQUOTE',
-            '=' : 'EQUAL'
+            ':' : 'COLON',
+            #'{' : 'LBRACE',
+            #'}' : 'RBRACE',
+            #"'" : 'SINGLEQUOTE',
+            #'"' : 'DOUBLEQUOTE',
+            #'=' : 'EQUAL'
         }
 
     def advance(self):
@@ -55,24 +56,42 @@ class Lexer(object):
         text = self.text
         while self.pos < len(text) and self.current_char.isspace():
             self.advance()
+        
+    def skip_comment(self):
+        while self.current_char != '}':
+            self.advance()
+        self.advance() # the closing curly brace
 
-    def getNumber(self):
+    def number(self):
+        '''
+        Use decimal point to determine integer or float
+        '''
         result = ''
-        text = self.text
-        while self.pos < len(text) and self.current_char.isdigit():
+        isfloat = False
+        while self.current_char is not None and self.current_char.isdigit():
             result += self.current_char
             self.advance()
-        return Token('INTEGER', int(result))
+            if self.current_char == '.':
+                isfloat = True
+                result += self.current_char
+                self.advance()
+                while self.current_char is not None and self.current_char.isdigit():
+                    result += self.current_char
+                    self.advance()
+        if isfloat:
+            return Token('REAL_CONST', float(result))
+        return Token('INTEGER_CONST', int(result))
 
-    def getWord(self):
-        word = ''
+    def identifier(self):
+        ident = ''
         text = self.text
         while self.current_char is not None\
              and (self.current_char.isalnum() or self.current_char == '_'):
-            word += self.current_char
+            ident += self.current_char
             self.advance()
         # Set the word to upper case, making keyword case insensitve
-        token = RESERVED_KEYWORDS.get(word.upper(), Token('ID', word))
+        ident = ident.upper()
+        token = RESERVED_KEYWORDS.get(ident, Token('ID', ident))
         return token
 
     def error(self):
@@ -92,9 +111,13 @@ class Lexer(object):
                 self.advance()
                 return token
             elif self.current_char.isdigit():
-                return self.getNumber()
+                # either it's float or integer
+                return self.number()
             elif self.current_char.isalpha() or self.current_char == '_':
-                return self.getWord()
+                return self.identifier()
+            elif self.current_char == '{':
+                self.advance()
+                self.skip_comment()
             else:
                 self.error()
 

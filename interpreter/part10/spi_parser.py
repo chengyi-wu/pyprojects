@@ -17,11 +17,15 @@ class BinOp(AST):
         self. token = self.op = op
         self.left = left
         self.right = right
+    def __str__(self):
+        return "{left} {op} {right}".format(left=self.left,op=self.op,right=self.right)
 
 class Num(AST):
     def __init__(self, token, value):
         self.token = token
         self.value = value
+    def __str__(self):
+        return repr(self.value)
 
 class Var(Num):
     pass
@@ -39,6 +43,33 @@ class Compound(AST):
 class NoOp(AST):
     pass
 
+class Program(AST):
+    def __init__(self, name, block):
+        self.name = name
+        self.block = block
+
+class Block(AST):
+    def __init__(self, declarations, compound_statement):
+        self.declarations = declarations
+        self.compound_statement = compound_statement
+
+class VarDecl(AST):
+    '''
+    Holds a variable node + type node
+    '''
+    def __init__(self, var_node, var_type):
+        self.var_node = var_node
+        self.var_type = var_type
+    def __str__(self):
+        return "{type} {node}".format(type=self.var_type, node=self.var_node) 
+
+class Type(AST):
+    def __init__(self, token):
+        self.token = token
+        self.value = token.value
+    def __str__(self):
+        return repr(self.value)
+
 class Parser(object):
     def __init__(self, lexer):
         self.lexer = lexer
@@ -54,12 +85,12 @@ class Parser(object):
         if self.current_token.type == token_type:
             self.current_token = self.lexer.get_next_token()
         else:
-            print("Expected token={expected}, feeding token={feed}".format(expected=self.current_token,feed=token_type))
+            print("Expected token={expected}, feeding token={feed}".format(expected=token_type,feed=self.current_token))
             self.error()
 
     def factor(self):
         '''
-        factor : PLUS factor | MINUS factor | INTEGER | LPAREN expr RPAREN | variable
+        factor : PLUS factor | MINUS factor | INTEGER_CONST | REAL_CONST | LPAREN expr RPAREN | variable
         '''
         token = self.current_token
 
@@ -74,24 +105,30 @@ class Parser(object):
             node = self.expr()
             self.eat('RPAREN')
             return node
-        elif token.type == 'INTEGER':
+        elif token.type == 'INTEGER_CONST':
             node = Num(token, token.value)
-            self.eat('INTEGER')
+            self.eat('INTEGER_CONST')
+            return node
+        elif token.type == 'REAL_CONST':
+            node = Num(token, token.value)
+            self.eat('REAL_CONST')
             return node
         else:
             return self.variable()
 
     def term(self):
         '''
-        term : factor((MUL|DIV)factor)*
+        term : factor((MUL | INTEGER_DIV | FLOAT_DIV) factor)*
         '''
         node = self.factor()
-        while self.current_token.type in ('MUL', 'DIV'):
+        while self.current_token.type in ('MUL', 'INTEGER_DIV', 'FLOAT_DIV'):
             token = self.current_token
             if token.type == 'MUL':
                 self.eat('MUL')
-            else:
-                self.eat('DIV')
+            elif token.type == 'INTEGER_DIV':
+                self.eat('INTEGER_DIV')
+            elif token.type == 'FLOAT_DIV':
+                self.eat('FLOAT_DIV')
             node = BinOp(node, token, self.factor())
         
         return node
@@ -140,7 +177,7 @@ class Parser(object):
         """
         token = self.current_token
         if token.type == 'BEGIN':
-            node = self.compund_statment()
+            node = self.compound_statement()
         elif token.type == 'ID':
             node = self.assignment_statement()
         else:
@@ -164,7 +201,7 @@ class Parser(object):
         
         return results
 
-    def compund_statment(self):
+    def compound_statement(self):
         '''
         compund_statment : BEGIN statement_list END
         '''
@@ -182,14 +219,57 @@ class Parser(object):
 
     def program(self):
         '''
-        program : compound_staement DOT
+        program : PROGRAM variable SEMI block DOT
         '''
-        node = self.compund_statment()
-        if self.current_token.type == "DOT":
-            self.eat('DOT')
-            return node
-        self.error()
-            
+        self.eat('PROGRAM')
+        var = self.variable()
+        self.eat("SEMI")
+        block = self.block()
+        self.eat('DOT')
+        return Program(var, block)
+
+    def block(self):
+        declarations = self.declarations()
+        compound_statement = self.compound_statement()
+        return Block(declarations, compound_statement)
+
+    def declarations(self):
+        if self.current_token.type == 'VAR':
+            self.eat('VAR')
+            var_nodes = []
+            while self.current_token.type != 'BEGIN':
+                var_nodes.extend(self.variable_declaration())
+                self.eat('SEMI')
+            return var_nodes
+
+    def variable_declaration(self):
+        if self.current_token.type == 'ID':
+            token = self.current_token
+            self.eat('ID')
+            var_nodes = [token]
+            while self.current_token.type == 'COMMA':
+                self.eat('COMMA')
+                token = self.current_token
+                self.eat('ID')
+                var_nodes.append(token)
+            self.eat('COLON')
+            var_type = self.type_spec()
+            vars = []
+            for n in var_nodes:
+                vars.append(VarDecl(n, var_type))
+            return vars
+        
+
+    def type_spec(self):
+        token = self.current_token
+        if token.type == 'INTEGER':
+            self.eat('INTEGER')
+        elif token.type == 'REAL':
+            self.eat('REAL')
+        else:
+            self.error()
+        return Type(token)
+ 
     def parse(self):
         node = self.program()
         if self.current_token.type != 'EOF':

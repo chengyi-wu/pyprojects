@@ -1,19 +1,23 @@
 from spi_lexer import Lexer
 from spi_parser import Parser
 
-s = '\
-BEGIN\
-    BEGIN\
-        number := 2;\
-        a := number;\
-        b := 10 * a + 10 * number / 4;\
-        c := a - - b\
-    END;\
-    x := 11;\
-END.'
-l = Lexer(s)
-p = Parser(l)
-root = p.parse()
+source_code = ''
+with open('part10.pas', 'r') as f:
+    for ln in f:
+        source_code += ln
 
-for n in root.children:
+print source_code
+    
+l = Lexer(source_code)
+p = Parser(l)
+program = p.parse()
+
+print program.name
+
+block = program.block
+
+for d in block.declarations:
+    print d
+
+for n in block.compound_statement.children:
     print n
