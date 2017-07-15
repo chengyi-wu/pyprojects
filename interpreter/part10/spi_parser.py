@@ -152,10 +152,8 @@ class Parser(object):
         variable: ID
         '''
         token = self.current_token
-        if token.type == 'ID':
-            self.eat('ID')
-            return Var(token, token.value)
-        self.error()
+        self.eat('ID')
+        return Var(token, token.value)
 
     def empty(self):
         return NoOp()
@@ -166,10 +164,8 @@ class Parser(object):
         '''
         node = self.variable()
         token = self.current_token
-        if token.type == 'ASSIGN':
-            self.eat('ASSIGN')
-            return Assign(node, token, self.expr())
-        self.error()
+        self.eat('ASSIGN')
+        return Assign(node, token, self.expr())
 
     def statement(self):
         """
@@ -205,17 +201,14 @@ class Parser(object):
         '''
         compund_statment : BEGIN statement_list END
         '''
-        if self.current_token.type == 'BEGIN':
-            self.eat('BEGIN')
-            nodes = self.statement_list()
-            self.eat('END')
+        self.eat('BEGIN')
+        nodes = self.statement_list()
+        self.eat('END')
             
-            root = Compound()
-            for node in nodes:
-                root.children.append(node)
-            return root
-
-        self.error()
+        root = Compound()
+        for node in nodes:
+            root.children.append(node)
+        return root
 
     def program(self):
         '''
@@ -234,30 +227,28 @@ class Parser(object):
         return Block(declarations, compound_statement)
 
     def declarations(self):
-        if self.current_token.type == 'VAR':
-            self.eat('VAR')
-            var_nodes = []
-            while self.current_token.type != 'BEGIN':
-                var_nodes.extend(self.variable_declaration())
-                self.eat('SEMI')
-            return var_nodes
+        self.eat('VAR')
+        var_nodes = []
+        while self.current_token.type != 'BEGIN':
+            var_nodes.extend(self.variable_declaration())
+            self.eat('SEMI')
+        return var_nodes
 
     def variable_declaration(self):
-        if self.current_token.type == 'ID':
+        token = self.current_token
+        self.eat('ID')
+        var_nodes = [token]
+        while self.current_token.type == 'COMMA':
+            self.eat('COMMA')
             token = self.current_token
             self.eat('ID')
-            var_nodes = [token]
-            while self.current_token.type == 'COMMA':
-                self.eat('COMMA')
-                token = self.current_token
-                self.eat('ID')
-                var_nodes.append(token)
-            self.eat('COLON')
-            var_type = self.type_spec()
-            vars = []
-            for n in var_nodes:
-                vars.append(VarDecl(n, var_type))
-            return vars
+            var_nodes.append(token)
+        self.eat('COLON')
+        var_type = self.type_spec()
+        vars = []
+        for n in var_nodes:
+            vars.append(VarDecl(n, var_type))
+        return vars
         
 
     def type_spec(self):
