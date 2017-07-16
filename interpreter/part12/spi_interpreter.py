@@ -1,19 +1,14 @@
 from spi_lexer import *
 from spi_parser import *
-
-# Visitor Pattern
-class NodeVisitor(object):
-    def visit(self, node):
-        method_name = 'visit_' + type(node).__name__
-        visitor = getattr(self, method_name, self.generic_visit)
-        return visitor(node)
-    def generic_visit(self, node):
-        raise Exception('No visit_{} method'.format(type(node).__name__))
+from spi_symbol import *
+from NodeVisitor import *
+from collections import OrderedDict
 
 class Interpreter(NodeVisitor):
-    def __init__(self, parser):
-        self.parser = parser
-        self.GLOBAL_SCOPE = {}
+    def __init__(self, tree):
+        # changed the parser to AST tree root
+        self.tree = tree
+        self.GLOBAL_MEMORY = OrderedDict()
 
     def visit_BinOp(self, node):
         if node.op.type == 'PLUS':
@@ -45,15 +40,12 @@ class Interpreter(NodeVisitor):
 
     def visit_Assign(self, node):
         var_name = node.left.value
-        self.GLOBAL_SCOPE[var_name] = self.visit(node.right)
+        self.GLOBAL_MEMORY[var_name] = self.visit(node.right)
 
     def visit_Var(self, node):
         var_name = node.value
-        val = self.GLOBAL_SCOPE.get(var_name)
-        if val is None:
-            raise NameError(repr(var_name))
-        else:
-            return val
+        val = self.GLOBAL_MEMORY.get(var_name)
+        return val
 
     def visit_Program(self, node):
         # Register the program name?
@@ -68,11 +60,13 @@ class Interpreter(NodeVisitor):
     def visit_VarDecl(self, node):
         # Register in Symbol table for the variable
         node.var_node
-        self.visit(node.var_type)
+        self.visit(node.type_node)
 
     def visit_Type(self, node):
         return node.value
 
+    def visit_ProcedureDecl(self, node):
+        pass
+
     def interpret(self):
-        root = self.parser.parse()
-        self.visit(root)
+        self.visit(self.tree)

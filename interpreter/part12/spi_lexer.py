@@ -15,6 +15,7 @@ RESERVED_KEYWORDS = {
     'VAR' : Token('VAR', 'VAR'),
     'INTEGER' : Token('INTEGER', 'INTEGER'),
     'REAL' : Token('REAL', 'REAL'),
+    'PROCEDURE' : Token('PROCEDURE', 'PROCEDURE'),
 }
 
 class Lexer(object):
