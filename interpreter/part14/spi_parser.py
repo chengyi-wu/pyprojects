@@ -1,8 +1,8 @@
 from spi_lexer import Lexer, Token
 
-################### PARSER #######################
-#            Produce a syntax tree               #
-################### PARSER #######################
+################### AST #######################
+#            Abstract Syntax Tree             #
+################### AST #######################
 
 class AST(object):
     pass
@@ -63,17 +63,30 @@ class VarDecl(AST):
     def __str__(self):
         return "{type} {node}".format(type=self.type_node, node=self.var_node) 
 
-class ProcedureDecl(AST):
-    def __init__(self, name, block):
-        self.name = name
-        self.block = block
-
 class Type(AST):
     def __init__(self, token):
         self.token = token
         self.value = token.value
     def __str__(self):
         return repr(self.value)
+
+class Param(AST):
+    '''
+    The parameter list of a procedure
+    '''
+    def __init__(self, name, type):
+        self.name = name
+        self.type = type
+
+class ProcedureDecl(AST):
+    def __init__(self, name, params, block):
+        self.name = name
+        self.params = params
+        self.block = block
+
+################### PARSER #######################
+#            Produce a syntax tree               #
+################### PARSER #######################
 
 class Parser(object):
     def __init__(self, lexer):
@@ -237,7 +250,7 @@ class Parser(object):
     def declarations(self):
         '''
         declarations : VAR (variable_declaration SEMI)+ 
-                     | (PROCEDURE ID SEMI block)*
+                     | (PROCEDURE ID (LPAREN formal_parameter_list RPAREN)? SEMI block)*
         '''
         # slightly different from the author
         decls = []
@@ -253,12 +266,22 @@ class Parser(object):
                 self.eat('PROCEDURE')
                 proc_name = self.current_token
                 self.eat('ID')
+                proc_params = None
+                if self.current_token == 'LPAREN':
+                    self.eat('LPAREN')
+                    proc_params = self.formal_parameter_list()
+                    self.eat('RPAREN')
                 self.eat('SEMI')
                 proc_block = self.block()
                 self.eat('SEMI')
-                decls.append(ProcedureDecl(proc_name, proc_block))
+                decls.append(ProcedureDecl(proc_name, proc_params, proc_block))
             
         return decls
+
+    def formal_parameter_list(self):
+        '''
+        formal_parameter_list : formal_parameters | formal_parameters SEMI formal_parameter_list
+        '''
 
     def variable_declaration(self):
         '''

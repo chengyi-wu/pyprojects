@@ -17,4 +17,4 @@ analyzer = SemanticAnalyzer(tree)
 
 analyzer.analyze()
 
-print(analyzer.symtab)
+print(analyzer.scope)
