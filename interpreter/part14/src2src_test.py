@@ -4,7 +4,7 @@ from spi_semantic import *
 from src2src import *
 
 source_code = ''
-with open('pascal.pas', 'r') as f:
+with open('translated.pas', 'r') as f:
     for ln in f:
         source_code += ln
 
@@ -16,9 +16,9 @@ tree = p.parse()
 
 analyzer = SemanticAnalyzer(tree)
 
-#analyzer.analyze()
+analyzer.analyze()
 
 #print(analyzer)
 rewriter = S2SCompiler(tree)
 
-rewriter.rewrite()
+print rewriter.rewrite()
