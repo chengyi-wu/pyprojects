@@ -74,9 +74,9 @@ class Param(AST):
     '''
     The parameter list of a procedure
     '''
-    def __init__(self, name, type):
-        self.name = name
-        self.type = type
+    def __init__(self, param_name, param_type):
+        self.param_name = param_name
+        self.param_type = param_type
 
 class ProcedureDecl(AST):
     def __init__(self, name, params, block):
@@ -267,7 +267,7 @@ class Parser(object):
                 proc_name = self.current_token
                 self.eat('ID')
                 proc_params = None
-                if self.current_token == 'LPAREN':
+                if self.current_token.type == 'LPAREN':
                     self.eat('LPAREN')
                     proc_params = self.formal_parameter_list()
                     self.eat('RPAREN')
@@ -282,6 +282,24 @@ class Parser(object):
         '''
         formal_parameter_list : formal_parameters | formal_parameters SEMI formal_parameter_list
         '''
+        params = self.formal_parameters()
+        if self.current_token.type == 'SEMI':
+            params.extend(self.formal_parameter_list)
+        return params
+
+    def formal_parameters(self):
+        '''
+        formal_parameters : ID (COMMA ID)* COLON type_spec
+        '''
+        params = [self.current_token]
+        self.eat('ID')
+        while self.current_token.type == 'COMMA':
+            self.eat('COMMA')
+            params.append(self.current_token)
+            self.eat('ID')
+        self.eat('COLON')
+        type_node = self.type_spec()
+        return [Param(p, type_node) for p in params]
 
     def variable_declaration(self):
         '''

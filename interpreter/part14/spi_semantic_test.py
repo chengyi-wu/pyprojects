@@ -3,7 +3,7 @@ from spi_parser import *
 from spi_semantic import *
 
 source_code = ''
-with open('part13.pas', 'r') as f:
+with open('pascal.pas', 'r') as f:
     for ln in f:
         source_code += ln
 
@@ -17,4 +17,4 @@ analyzer = SemanticAnalyzer(tree)
 
 analyzer.analyze()
 
-print(analyzer.scope)
+#print(analyzer)

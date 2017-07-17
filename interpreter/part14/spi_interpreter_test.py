@@ -4,7 +4,7 @@ from spi_semantic import *
 from spi_interpreter import *
 
 source_code = ''
-with open('part12.pas', 'r') as f:
+with open('nestedscope.pas', 'r') as f:
     for ln in f:
         source_code += ln
 
@@ -15,8 +15,6 @@ p = Parser(l)
 tree = p.parse()
 analyzer = SemanticAnalyzer(tree)
 analyzer.analyze()
-
-print(analyzer.symtab)
 
 interpreter = Interpreter(tree)
 interpreter.interpret()
