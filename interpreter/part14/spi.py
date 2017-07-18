@@ -2,6 +2,7 @@ from spi_lexer import *
 from spi_parser import *
 from spi_semantic import *
 from spi_interpreter import *
+from src2src import *
 
 def main():
     import sys
@@ -17,6 +18,9 @@ def main():
     print('\nGLOBAL MEMORY')
     for k, v in interpreter.GLOBAL_MEMORY.items():
         print('%7s = %s' % (k,v))
+
+    compiler = S2SCompiler(tree)
+    print compiler.rewrite()
 
 if __name__ == '__main__':
     main()
