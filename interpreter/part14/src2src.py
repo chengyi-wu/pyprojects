@@ -24,7 +24,6 @@ class S2SCompiler(NodeVisitor):
 
         if scope._symbols.get(symbol) is None:
             return self.lookup(scope.enclosing_scope, symbol)
-        print "DEBUG",scope.scope_name
         return scope.scope_level, scope._symbols.get(symbol)
 
     def visit_Program(self, node):
@@ -106,7 +105,10 @@ class S2SCompiler(NodeVisitor):
             s += self.visit(n) + ';'
         s = s[:-1]
         self.current_inden -= 4
-        s += '\n{inden}END'.format(inden=' ' * self.current_inden)
+        s += '\n{inden}END {{ END OF {scope_name}}}'.format(
+            inden=' ' * self.current_inden,
+            scope_name=self.current_scope.scope_name
+        )
         return s
 
 
