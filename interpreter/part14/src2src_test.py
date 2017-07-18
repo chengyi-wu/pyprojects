@@ -4,7 +4,7 @@ from spi_semantic import *
 from src2src import *
 
 source_code = ''
-with open('translated.pas', 'r') as f:
+with open('pascal.pas', 'r') as f:
     for ln in f:
         source_code += ln
 

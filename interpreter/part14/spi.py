@@ -12,11 +12,11 @@ def main():
     analyzer = SemanticAnalyzer(tree)
     analyzer.analyze()
 
-    print(analyzer.symtab)
-
     interpreter = Interpreter(tree)
     interpreter.interpret()
-    print(interpreter.GLOBAL_MEMORY)
+    print('\nGLOBAL MEMORY')
+    for k, v in interpreter.GLOBAL_MEMORY.items():
+        print('%7s = %s' % (k,v))
 
 if __name__ == '__main__':
     main()

@@ -4,7 +4,7 @@ from spi_semantic import *
 from spi_interpreter import *
 
 source_code = ''
-with open('nestedscope.pas', 'r') as f:
+with open('pascal.pas', 'r') as f:
     for ln in f:
         source_code += ln
 
