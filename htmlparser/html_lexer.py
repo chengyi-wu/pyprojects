@@ -1,27 +1,11 @@
-token_types = {
-    '<' : 'LTAG',
-    '>' : 'RTAG',
-    # '/' : 'SLAH',
-    # '-' : 'DASH',
-    # '"' : 'DQUOTE',
-    # "'" : 'SQUOTE',
-    # '!' : 'EXC',
-    # '=' : 'EQUAL',
-    # ';' : 'SEMI',
-    # '#' : "#",
-    # '.' : 'DOT',
-    # '+' : "PLUS",
-    # '-' : "MINUS",
-    # ':' : 'COLON'
-}
-
 class Token(object):
-    def __init__(self, name, value):
+    def __init__(self, name, value, pos):
         self.name = name
         self.value = value
+        self.pos = pos
     
     def __str__(self):
-        return "<Token:{name}-{value}>".format(name=self.name,value=self.value)
+        return "<Token:({name}, {value}, {pos})>".format(name=self.name,value=self.value,pos=self.pos)
 
 class Lexer(object):
     def __init__(self, text):
@@ -40,31 +24,42 @@ class Lexer(object):
             self.current_char = None
 
     def skip_whitespace(self):
-        if self.current_char is not None and self.current_char.isspace():
+        while self.current_char is not None and self.current_char.isspace():
             self.advance()
 
-    def identifier(self):
+    def tag(self):
         result = ''
-        while self.current_char is not None \
-            and not self.current_char.isspace()\
-            and self.current_char not in token_types:
+        isEndTag = False
+        if self.current_char == '/':
+            isEndTag = True
+            self.advance()
+        pos = self.pos
+        while self.current_char is not None\
+            and self.current_char != '>':
             result += self.current_char
             self.advance()
-        return Token('ID', result)
+        self.advance()
+        if isEndTag:
+            return Token('ENDTAG', result, pos)
+        return Token('STARTTAG', result, pos)
 
+    def literal(self):
+        result = ''
+        pos = self.pos
+        while self.current_char is not None and self.current_char != '<':
+            result += self.current_char
+            self.advance()
+        return Token('LITERAL', result, pos)
 
     def get_next_token(self):
+
+        self.skip_whitespace()
         
-        while self.current_char is not None and self.current_char.isspace():
-            self.skip_whitespace()
-
-        #print(self.current_char,self.pos, ord(self.current_char))
-
-        if self.current_char in token_types:
-            token = Token(self.current_char, token_types[self.current_char])
+        if self.current_char == '<':
             self.advance()
-            return token
+            return self.tag()
         elif self.current_char is not None:
-            return self.identifier()
+            return self.literal()
         
-        return Token('EOF', 'EOF')
+        print(self.current_char)
+        return Token('EOF', 'EOF', self.pos)

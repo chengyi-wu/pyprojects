@@ -1,6 +1,6 @@
 from html_lexer import *
 
-f = open('google.html', 'r')
+f = open('baidu.html', 'r')
 text = f.read()
 
 f.close()
