@@ -17,25 +17,25 @@ int initServer(const char* host, int port) {
     sa.sin_addr.s_addr = htonl(INADDR_ANY);
     if (host) {
         if(inet_aton(host, &sa.sin_addr) == -1) {
-            PRINTERR(errno); return AENET_ERR;
+            PRINTERR(errno); return AE_ERR;
         }
     }
 
     int sfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sfd == -1) {
-        PRINTERR(errno); return AENET_ERR;
+        PRINTERR(errno); return AE_ERR;
     }
 
     setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 
     if (bind(sfd, (struct sockaddr*)&sa, sizeof(sa)) == -1) {
         close(sfd);
-        PRINTERR(errno); return AENET_ERR;
+        PRINTERR(errno); return AE_ERR;
     }
 
     if (listen(sfd, QUEUE_SIZE) == -1) {
         close(sfd);
-        PRINTERR(errno); return AENET_ERR;
+        PRINTERR(errno); return AE_ERR;
     }
 
     fprintf(stderr, "Listening on %d\n", port);
@@ -44,7 +44,7 @@ int initServer(const char* host, int port) {
 }
 
 void startServer(int serversocket) {
-    if (serversocket == AENET_ERR) return;
+    if (serversocket == AE_ERR) return;
     // int fd;
     struct sockaddr_in sa;
     unsigned int saLen;
@@ -67,7 +67,7 @@ void startServer(int serversocket) {
         //     close(fd);
         // }
         /* pthread */
-        fprintf(stderr, "accept %d\n", *fd);
+        fprintf(stderr, "client address = [%s:%d] fd=%d\n", inet_ntoa(sa.sin_addr), sa.sin_port, *fd);
         pthread_t tid;
         pthread_create(&tid, NULL, handle_request, fd);
     }
@@ -79,9 +79,10 @@ void handle_one_request(int fd, const struct sockaddr* sa) {
     char buf[size];
     memset(buf, 0, size);
     read(fd, buf, size);
-    // fprintf(stdout, "%s", buf);
+    fprintf(stderr, "%s\n", buf);
 
-    char* response = "HTTP/1.1 200 OK\r\n\r\n<h1>+OK</h1>\r\n";
+    // char* response = "HTTP/1.1 200 OK\r\n\r\n<h1>+OK</h1>\r\n";
+    char* response = "+OK";
 
     write(fd, response, strlen(response));
 

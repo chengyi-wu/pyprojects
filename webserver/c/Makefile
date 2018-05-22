@@ -1,6 +1,6 @@
 CFLAGS= -g -Wall
 STD= -std=c99
-SRC= tcpserver.c main.c
+SRC= tcpserver2.c main.c
 LIB= -pthread
 
 all: $(SRC)
