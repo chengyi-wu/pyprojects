@@ -21,42 +21,6 @@ void svrLog(int level, const char* fmt, ...) {
     va_end(ap);
 }
 
-int initServer(const char* host, int port) {
-    int on = 1;
-    struct sockaddr_in sa;
-
-    memset(&sa, 0, sizeof(sa));
-    sa.sin_family = AF_INET;
-    sa.sin_port = htons(port);
-    sa.sin_addr.s_addr = htonl(INADDR_ANY);
-    if (host) {
-        if(inet_aton(host, &sa.sin_addr) == -1) {
-            svrLog(2, "errno = %d", errno); return AE_ERR;
-        }
-    }
-
-    int sfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sfd == -1) {
-        svrLog(2, "errno = %d", errno); return AE_ERR;
-    }
-
-    setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
-
-    if (bind(sfd, (struct sockaddr*)&sa, sizeof(sa)) == -1) {
-        close(sfd);
-        svrLog(2, "errno = %d", errno); return AE_ERR;
-    }
-
-    if (listen(sfd, QUEUE_SIZE) == -1) {
-        close(sfd);
-        svrLog(2, "errno = %d", errno); return AE_ERR;
-    }
-
-    svrLog(1, "Listening on %d", port);
-    
-    return sfd;
-}
-
 aeEventLoop* aeCreateEventLoop(void) {
     aeEventLoop *eventLoop = (aeEventLoop*)malloc(sizeof(aeEventLoop));
     if (eventLoop == NULL) {
@@ -67,6 +31,7 @@ aeEventLoop* aeCreateEventLoop(void) {
     eventLoop->timeEventHead = NULL;
     eventLoop->timeEventNextId = 0;
     eventLoop->stop = 0;
+    eventLoop->s = NULL;
     return eventLoop;
 }
 
@@ -191,6 +156,7 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags){
 void freeClient(struct aeEventLoop *eventLoop, int fd) {
     aeDeleteFileEvent(eventLoop, fd, AE_READABLE);
     aeDeleteFileEvent(eventLoop, fd, AE_WRITABLE);
+    eventLoop->s->nClinetConnections--;
     close(fd);
 }
 
@@ -244,27 +210,60 @@ void acceptHandler(struct aeEventLoop *eventLoop, int fd, void *clientData, int 
     strcpy(cip, inet_ntoa(sa.sin_addr));
     cport = ntohs(sa.sin_port);
     svrLog(0, "Accepting client connection: %s:%d", cip, cport);
+    eventLoop->s->nClinetConnections++;
     aeCreateFileEvent(eventLoop, cfd, AE_READABLE, readQueryFromClient, NULL, NULL);
 }
 
 int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData){
-    svrLog(-1, "%d connections.", 0);
+    svrLog(0, "%d connections", eventLoop->s->nClinetConnections);
     return 0;
 }
 
-void startServer(int serversocket) {
-    if (serversocket == AE_ERR) return;
-    // int fd;
-    // struct sockaddr_in sa;
-    // unsigned int saLen;
+void initServer(server *s, const char* host, int port) {
+    if (s == NULL) return;
+    int on = 1;
+    struct sockaddr_in sa;
 
-    aeEventLoop *eventLoop = aeCreateEventLoop();
-    aeCreateTimeEvent(eventLoop, 1000, serverCron, NULL, NULL);
-    aeCreateFileEvent(eventLoop, serversocket, AE_READABLE,
-        acceptHandler, NULL, NULL);
-    while(eventLoop->stop == 0) {
-        // saLen = sizeof(sa);
-        aeProcessEvents(eventLoop, 0);
+    memset(&sa, 0, sizeof(sa));
+    sa.sin_family = AF_INET;
+    sa.sin_port = htons(port);
+    sa.sin_addr.s_addr = htonl(INADDR_ANY);
+    if (host) {
+        if(inet_aton(host, &sa.sin_addr) == -1) {
+            svrLog(2, "errno = %d", errno); return;
+        }
     }
-    close(serversocket);
+
+    int sfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sfd == -1) {
+        svrLog(2, "errno = %d", errno); return;
+    }
+
+    setsockopt(sfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+
+    if (bind(sfd, (struct sockaddr*)&sa, sizeof(sa)) == -1) {
+        close(sfd);
+        svrLog(2, "errno = %d", errno); return;
+    }
+
+    if (listen(sfd, QUEUE_SIZE) == -1) {
+        close(sfd);
+        svrLog(2, "errno = %d", errno); return;
+    }
+
+    s->fd = sfd;
+    s->el = aeCreateEventLoop();
+    s->el->s = s;
+    aeCreateTimeEvent(s->el, 1000, serverCron, NULL, NULL);
+    aeCreateFileEvent(s->el, s->fd, AE_READABLE, acceptHandler, NULL, NULL);
+    svrLog(1, "Listening on %d", port);
+}
+
+void startServer(server *s) {
+    if (s == NULL) return;
+
+    while(s->el->stop == 0) {
+        // saLen = sizeof(sa);
+        aeProcessEvents(s->el, 0);
+    }
 }

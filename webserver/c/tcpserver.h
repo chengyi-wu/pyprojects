@@ -47,10 +47,13 @@ typedef struct aeTimeEvent {
     struct aeTimeEvent *next;
 } aeTimeEvent;
 
+struct server;
+
 typedef struct aeEventLoop {
     long long timeEventNextId;
     aeFileEvent *fileEventHead;
     aeTimeEvent *timeEventHead;
+    struct server *s;
     int stop;
 } aeEventLoop;
 
@@ -73,9 +76,9 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags);
 
 int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData);
 
-int initServer(const char* host, int port);
+void initServer(server *s, const char* host, int port);
 
-void startServer(int serversocket);
+void startServer(server *s);
 
 void svrLog(int level, const char* fmt, ...);
 
