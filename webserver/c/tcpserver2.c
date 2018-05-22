@@ -60,7 +60,7 @@ int initServer(const char* host, int port) {
 aeEventLoop* aeCreateEventLoop(void) {
     aeEventLoop *eventLoop = (aeEventLoop*)malloc(sizeof(aeEventLoop));
     if (eventLoop == NULL) {
-        svrLog(3, "OOM aeCreateEventLoop()");
+        svrLog(2, "OOM aeCreateEventLoop()");
         return NULL;
     }
     eventLoop->fileEventHead = NULL;
@@ -94,6 +94,8 @@ int aeCreateFileEvent(aeEventLoop *eventLoop, int fd, int mask,
         svrLog(3, "OOM aeCreateFileEvent()");
         return AE_ERR;
     }
+    fe->fd = fd;
+    fe->mask = mask;
     fe->fileProc = proc;
     fe->finalizerProc = finalizerProc;
     fe->clientData = clientData;
@@ -103,24 +105,76 @@ int aeCreateFileEvent(aeEventLoop *eventLoop, int fd, int mask,
     return AE_OK;
 }
 
+void aeDeleteFileEvent(aeEventLoop *eventLoop, int fd, int mask) {
+    aeFileEvent *fe, *prev = NULL;
+    fe = eventLoop->fileEventHead;
+    while(fe) {
+        if(fe->fd == fd && fe->mask == mask) {
+            if (prev == NULL) eventLoop->fileEventHead = fe->next;
+            else prev->next = fe->next;
+            if (fe->finalizerProc) fe->finalizerProc(eventLoop, fe->clientData);
+            free(fe);
+            return;
+        }
+        prev = fe;
+        fe = fe->next;
+    }
+}
+
 int aeProcessEvents(aeEventLoop *eventLoop, int flags){
+    int retval;
+    int numfd = 0;
+    int maxfd = 0;
+
+    aeFileEvent *fe = eventLoop->fileEventHead;
+
     fd_set rfds, wfds, efds;
 
     FD_ZERO(&rfds);
     FD_ZERO(&wfds);
     FD_ZERO(&efds);
 
-    int retval;
-    int numfd = 3;
-    int maxfd = numfd + 1;
+    while(fe) {
+        if(fe->mask & AE_READABLE) FD_SET(fe->fd, &rfds);
+        if(fe->mask & AE_WRITABLE) FD_SET(fe->fd, &wfds);
+        if(fe->mask & AE_EXCEPTION) FD_SET(fe->fd, &efds);
+        if (maxfd < fe->fd) maxfd = fe->fd;
+        numfd++;
+        fe = fe->next;
+    }
 
     struct timeval tv;
     tv.tv_sec = 1;
     tv.tv_usec = 0;
 
+    // svrLog(0, "numfd=%d, maxfd=%d", numfd, maxfd);
     retval = select(maxfd + 1, &rfds, &wfds, &efds, &tv);
     if (retval > 0) {
+        fe = eventLoop->fileEventHead;
+        while(fe != NULL) {
+            int fd = (int) fe->fd;
 
+            if ((fe->mask & AE_READABLE && FD_ISSET(fd, &rfds)) ||
+                (fe->mask & AE_WRITABLE && FD_ISSET(fd, &wfds)) ||
+                (fe->mask & AE_EXCEPTION && FD_ISSET(fd, &efds)))
+            {
+                int mask = 0;
+
+                if (fe->mask & AE_READABLE && FD_ISSET(fd, &rfds))
+                    mask |= AE_READABLE;
+                if (fe->mask & AE_WRITABLE && FD_ISSET(fd, &wfds))
+                    mask |= AE_WRITABLE;
+                if (fe->mask & AE_EXCEPTION && FD_ISSET(fd, &efds))
+                    mask |= AE_EXCEPTION;
+                fe->fileProc(eventLoop, fe->fd, fe->clientData, mask);
+                fe = eventLoop->fileEventHead;
+                FD_CLR(fd, &rfds);
+                FD_CLR(fd, &wfds);
+                FD_CLR(fd, &efds);
+            } else {
+                fe = fe->next;
+            }
+        }
     }
 
     if (eventLoop->timeEventHead != NULL) {
@@ -134,8 +188,67 @@ int aeProcessEvents(aeEventLoop *eventLoop, int flags){
     return 0;
 }
 
+void freeClient(struct aeEventLoop *eventLoop, int fd) {
+    aeDeleteFileEvent(eventLoop, fd, AE_READABLE);
+    aeDeleteFileEvent(eventLoop, fd, AE_WRITABLE);
+    close(fd);
+}
+
+void sendReplyToClient(struct aeEventLoop *eventLoop, int fd, void *clientData, int mask){
+    char *reply = "OK\r\n";
+    write(fd, reply, strlen(reply));
+    aeDeleteFileEvent(eventLoop, fd, AE_WRITABLE);
+}
+
+void addReply(struct aeEventLoop *eventLoop, int fd) {
+    aeCreateFileEvent(eventLoop, fd, AE_WRITABLE, sendReplyToClient, NULL, NULL);
+}
+
+void readQueryFromClient(struct aeEventLoop *eventLoop, int fd, void *clientData, int mask) {
+    int IOBUF_LEN = 1024;
+    char buf[IOBUF_LEN];
+    int nread;
+
+    nread = read(fd, buf, IOBUF_LEN);
+    if(nread == -1) {
+        svrLog(2, "%s", strerror(errno));
+        freeClient(eventLoop, fd);
+        return;
+    } else if(nread == 0) {
+        svrLog(1, "Client closed connection");
+        freeClient(eventLoop, fd);
+        return;
+    }
+    if(nread) {
+        svrLog(1, "%s", buf);
+        addReply(eventLoop, fd);
+    } else {
+        return;
+    }
+}
+
+void acceptHandler(struct aeEventLoop *eventLoop, int fd, void *clientData, int mask) {
+    int cfd, cport;
+    char cip[128];
+    struct sockaddr_in sa;
+    unsigned int saLen;
+    while(1) {
+        cfd = accept(fd, (struct sockaddr *)&sa, &saLen);
+        if (cfd == -1) {
+            svrLog(0, "%s", strerror(errno));
+            return;
+        }
+        break;
+    }
+    
+    strcpy(cip, inet_ntoa(sa.sin_addr));
+    cport = ntohs(sa.sin_port);
+    svrLog(0, "Accepting client connection: %s:%d", cip, cport);
+    aeCreateFileEvent(eventLoop, cfd, AE_READABLE, readQueryFromClient, NULL, NULL);
+}
+
 int serverCron(struct aeEventLoop *eventLoop, long long id, void *clientData){
-    svrLog(0, "%d connections.", 0);
+    svrLog(-1, "%d connections.", 0);
     return 0;
 }
 
@@ -147,7 +260,8 @@ void startServer(int serversocket) {
 
     aeEventLoop *eventLoop = aeCreateEventLoop();
     aeCreateTimeEvent(eventLoop, 1000, serverCron, NULL, NULL);
-    // aeCreateFileEvent(eventLoop, )
+    aeCreateFileEvent(eventLoop, serversocket, AE_READABLE,
+        acceptHandler, NULL, NULL);
     while(eventLoop->stop == 0) {
         // saLen = sizeof(sa);
         aeProcessEvents(eventLoop, 0);

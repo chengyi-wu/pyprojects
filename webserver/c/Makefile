@@ -1,4 +1,4 @@
-CFLAGS= -g -Wall
+CFLAGS= -g -Wall -D_BSD_SOURCE
 STD= -std=c99
 SRC= tcpserver2.c main.c
 LIB= -pthread

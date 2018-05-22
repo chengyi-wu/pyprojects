@@ -12,10 +12,15 @@
 #include <pthread.h>
 // #include <wchar.h>
 #include <stdarg.h>
+#include <sys/select.h>
 
 #define QUEUE_SIZE 64
 #define AE_ERR -1
 #define AE_OK 0
+
+#define AE_READABLE 1
+#define AE_WRITABLE 2
+#define AE_EXCEPTION 4
 
 struct aeEventLoop;
 
@@ -49,12 +54,20 @@ typedef struct aeEventLoop {
     int stop;
 } aeEventLoop;
 
+typedef struct server {
+    int fd;
+    int nClinetConnections;
+    aeEventLoop *el;
+} server;
+
 aeEventLoop* aeCreateEventLoop(void);
 
 long long aeCreateTimeEvent(aeEventLoop *eventLoop, long long milliseconds,
     aeTimeProc *proc, void *clientData, aeEventFinalizerProc *finalizerProc);
 int aeCreateFileEvent(aeEventLoop *eventLoop, int fd, int mask,
     aeFileProc *proc, void *clientData, aeEventFinalizerProc *finalizerProc);
+
+void aeDeleteFileEvent(aeEventLoop *eventLoop, int fd, int mask);
 
 int aeProcessEvents(aeEventLoop *eventLoop, int flags);
 

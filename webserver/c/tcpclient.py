@@ -1,4 +1,5 @@
 import socket
+import sys
 
 def connect(host, port):
     s = socket.socket()
@@ -8,12 +9,9 @@ def connect(host, port):
 def read(fd):
     size = 1024
     data = ''
-    while True:
-        buf = fd.recv(size)
-        data += buf.decode('utf-8')
-        if len(buf) == 0:
-            break
-    print(data)
+    buf = fd.recv(size)
+    data = buf.decode('utf-8')
+    print(data[:-2])
 
 def write(fd, data):
     data = data.encode('utf-8')
@@ -24,13 +22,10 @@ def close(fd):
     
 
 if __name__ == '__main__':
+    fd = connect(sys.argv[1], int(sys.argv[2]))
+    if fd == -1:
+        print("Failed to connect!")
     while True:
         line = input(">> ")
-        fd = connect("localhost", 8080)
-        if fd == -1:
-            print("Failed to connect!")
-            break
-        write(fd, line + '\r\n')
+        write(fd, line + '\0')
         read(fd)
-        
-        close(fd)
