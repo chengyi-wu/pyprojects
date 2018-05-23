@@ -110,7 +110,7 @@ void acceptHandler(struct aeEventLoop *eventLoop, int fd, void *clientData, int 
         }
         break;
     }
-    c = (cClient*)malloc(sizeof(cClient));
+    c = (cClient*)calloc(1, sizeof(cClient));
     if (c == NULL) return;
     c->fd = cfd;
     strcpy(c->host, inet_ntoa(sa.sin_addr));

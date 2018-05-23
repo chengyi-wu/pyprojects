@@ -14,6 +14,8 @@ def read(fd):
     print(data[:-2])
 
 def write(fd, data):
+    EOF = '\0'
+    data += EOF
     data = data.encode('utf-8')
     fd.send(data)
 
@@ -25,5 +27,5 @@ if __name__ == '__main__':
     fd = connect(sys.argv[1], int(sys.argv[2]))
     while fd.fileno() > -1:
         line = input(">> ")
-        write(fd, line + '\0')
+        write(fd, line)
         read(fd)

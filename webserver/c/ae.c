@@ -1,7 +1,7 @@
 #include "ae.h"
 
 aeEventLoop* aeCreateEventLoop(void) {
-    aeEventLoop *eventLoop = (aeEventLoop*)malloc(sizeof(aeEventLoop));
+    aeEventLoop *eventLoop = (aeEventLoop*)calloc(1, sizeof(aeEventLoop));
     if (eventLoop == NULL) return NULL;
     eventLoop->fileEventHead = NULL;
     eventLoop->timeEventHead = NULL;
@@ -14,7 +14,7 @@ aeEventLoop* aeCreateEventLoop(void) {
 long long aeCreateTimeEvent(aeEventLoop *eventLoop, long long milliseconds,
     aeTimeProc *proc, void *clientData, aeEventFinalizerProc *finalizerProc) {
     long long id = eventLoop->timeEventNextId++;
-    aeTimeEvent *te = (aeTimeEvent *)malloc(sizeof(aeTimeEvent));
+    aeTimeEvent *te = (aeTimeEvent *)calloc(1, sizeof(aeTimeEvent));
     if (te == NULL) return AE_ERR;
     te->timeProc = proc;
     te->finalizerProc = finalizerProc;
@@ -27,7 +27,7 @@ long long aeCreateTimeEvent(aeEventLoop *eventLoop, long long milliseconds,
 
 int aeCreateFileEvent(aeEventLoop *eventLoop, int fd, int mask,
     aeFileProc *proc, void *clientData, aeEventFinalizerProc *finalizerProc) {
-    aeFileEvent *fe = (aeFileEvent *)malloc(sizeof(aeFileEvent));
+    aeFileEvent *fe = (aeFileEvent *)calloc(1, sizeof(aeFileEvent));
     if (fe == NULL) return AE_ERR;
     fe->fd = fd;
     fe->mask = mask;
