@@ -11,7 +11,7 @@ def read(fd):
     data = ''
     buf = fd.recv(size)
     data = buf.decode('utf-8')
-    print(data[:-2])
+    print(data)
 
 def write(fd, data):
     EOF = '\0'
@@ -28,4 +28,8 @@ if __name__ == '__main__':
     while fd.fileno() > -1:
         line = input(">> ")
         write(fd, line)
+        if line == 'quit':
+            print('bye')
+            break;
         read(fd)
+    close(fd)

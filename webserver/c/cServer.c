@@ -28,6 +28,7 @@ typedef struct cServer {
 typedef struct cClient {
     int fd;
     char host[128];
+    char *querybuf;
     int port;
 } cClient;
 
@@ -58,15 +59,33 @@ void freeClient(struct aeEventLoop *eventLoop, cClient* c) {
     aeDeleteFileEvent(eventLoop, c->fd, AE_WRITABLE);
     // eventLoop->s->nConnections--;
     nconn--;
+    if (c->querybuf) 
+        free(c->querybuf);
     close(c->fd);
     free(c);
 }
 
 void sendReplyToClient(struct aeEventLoop *eventLoop, int fd, void *clientData, int mask){
     cClient *c = clientData;
-    char *reply = "OK\r\n";
-    write(fd, reply, strlen(reply));
-    aeDeleteFileEvent(eventLoop, fd, AE_WRITABLE);
+    if (c->querybuf) {
+        if (strcmp(c->querybuf, "quit") == 0) {
+            serverLog(SERVER_INFO, "Client closed connection");
+            freeClient(eventLoop, c);
+            return;
+        }
+    }
+    // char *reply = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nConnection: Closed\r\n\r\n<html><head><title>cServer</title></head><body><h1>Hello cServer</h1></body></html>\r\n";
+    char *reply = "OK";
+    int nwrite = 0;
+    nwrite = write(fd, reply, strlen(reply));
+    if (nwrite == -1) {
+        serverLog(SERVER_ERROR, "%s", strerror(errno));
+        freeClient(eventLoop, c);
+        return;
+    } else {
+        // freeClient(eventLoop, c);
+        aeDeleteFileEvent(eventLoop, fd, AE_WRITABLE);
+    }
 }
 
 void addReply(struct aeEventLoop *eventLoop, cClient* c) {
@@ -80,17 +99,21 @@ void readQueryFromClient(struct aeEventLoop *eventLoop, int fd, void *clientData
     int nread;
 
     nread = read(fd, buf, IOBUF_LEN);
-    if(nread == -1) {
+    if (nread == -1) {
         serverLog(SERVER_ERROR, "%s", strerror(errno));
         freeClient(eventLoop, c);
         return;
-    } else if(nread == 0) {
+    } else if (nread == 0) {
         serverLog(SERVER_INFO, "Client closed connection");
         freeClient(eventLoop, c);
         return;
     }
-    if(nread) {
+    if (nread) {
         serverLog(SERVER_INFO, "[%s:%d] %s", c->host, c->port, buf);
+        if (c->querybuf) 
+            free(c->querybuf);
+        c->querybuf = (char*)calloc(nread, sizeof(char));
+        strncpy(c->querybuf, buf, nread);
         addReply(eventLoop, c);
     } else {
         return;
@@ -111,7 +134,8 @@ void acceptHandler(struct aeEventLoop *eventLoop, int fd, void *clientData, int 
         break;
     }
     c = (cClient*)calloc(1, sizeof(cClient));
-    if (c == NULL) return;
+    c->querybuf = NULL;
+    if (c == NULL) { close(cfd);return;}
     c->fd = cfd;
     strcpy(c->host, inet_ntoa(sa.sin_addr));
     c->port = ntohs(sa.sin_port);
