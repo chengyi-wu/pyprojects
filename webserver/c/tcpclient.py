@@ -23,9 +23,7 @@ def close(fd):
 
 if __name__ == '__main__':
     fd = connect(sys.argv[1], int(sys.argv[2]))
-    if fd == -1:
-        print("Failed to connect!")
-    while True:
+    while fd.fileno() > -1:
         line = input(">> ")
         write(fd, line + '\0')
         read(fd)
